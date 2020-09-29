@@ -1,0 +1,59 @@
+const ACTION_SET_POSITION = 'set_position';
+const ACTION_UPDATE_POSITION = 'update_position';
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 5000 });
+
+let positions = {}
+wss.on('connection', function connection(ws) {
+  var socketAddr = ws._socket.remoteAddress.replace("::ffff:", "");
+  console.log('Connection from ' + socketAddr + " - " + new Date());
+
+  ws.on('message', function incoming(message) {
+    message = message.toString();
+    message_json = JSON.parse(message);
+    console.log('received message: ', message);
+    const action = message_json['action'];
+    const player = message_json['player'];
+
+    if (action == ACTION_SET_POSITION) {
+      positions[player] = {}
+      positions[player]['position'] = {
+        'x': parseInt(message_json['position']['x']),
+        'y': parseInt(message_json['position']['y']),
+      }
+    }
+
+    if (action == ACTION_UPDATE_POSITION) {
+      let updated_position = positions[player]['position'];
+      if (message_json['direction'] == 'up') {
+        updated_position['y'] += 16;
+      } else if (message_json['direction'] == 'down') {
+        updated_position['y'] -= 16;
+      } else if (message_json['direction'] == 'left') {
+        updated_position['x'] += 16;
+      } else if (message_json['direction'] == 'right') {
+        updated_position['x'] -= 16;
+      }
+      positions[player]['position'] = updated_position;
+    }
+
+    console.log(positions);
+
+    // Enviar mensagem para todos
+    wss.clients.forEach(function each(client) {
+      // if (client !== ws && client.readyState === WebSocket.OPEN) {
+      //   client.send('message');
+      // }
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(positions));
+      }
+    });
+  });
+
+  ws.on('close', function close() {
+    console.log('client disconnected');
+  });
+
+});
+
+console.log("server running on port", 5000);
