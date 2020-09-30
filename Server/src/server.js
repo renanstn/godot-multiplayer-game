@@ -1,12 +1,18 @@
 const ACTION_SET_POSITION = 'set_position';
 const ACTION_UPDATE_POSITION = 'update_position';
+
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 5000 });
+
 
 let positions = {}
 wss.on('connection', function connection(ws) {
   var socketAddr = ws._socket.remoteAddress.replace("::ffff:", "");
   console.log('Connection from ' + socketAddr + " - " + new Date());
+
+  ws.on('open', function open() {
+    console.log('connected');
+  });
 
   ws.on('message', function incoming(message) {
     message = message.toString();
@@ -17,22 +23,22 @@ wss.on('connection', function connection(ws) {
 
     if (action == ACTION_SET_POSITION) {
       positions[player] = {}
-      positions[player]['position'] = {
-        'x': parseInt(message_json['position']['x']),
-        'y': parseInt(message_json['position']['y']),
-      }
+      positions[player]['position'] = [
+        parseInt(message_json['position'][0]),
+        parseInt(message_json['position'][1])
+      ]
     }
 
     if (action == ACTION_UPDATE_POSITION) {
       let updated_position = positions[player]['position'];
       if (message_json['direction'] == 'up') {
-        updated_position['y'] += 16;
+        updated_position[1] += 16;
       } else if (message_json['direction'] == 'down') {
-        updated_position['y'] -= 16;
+        updated_position[1] -= 16;
       } else if (message_json['direction'] == 'left') {
-        updated_position['x'] += 16;
+        updated_position[0] += 16;
       } else if (message_json['direction'] == 'right') {
-        updated_position['x'] -= 16;
+        updated_position[0] -= 16;
       }
       positions[player]['position'] = updated_position;
     }

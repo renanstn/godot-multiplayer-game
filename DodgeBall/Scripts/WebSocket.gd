@@ -27,7 +27,9 @@ func _connected(protocol):
 func _on_data():
 	var data = _client.get_peer(1).get_packet().get_string_from_utf8()
 	var parsed_data = JSON.parse(data).result
+	print('Brute data received')
 	print(parsed_data)
+	Global.update_all_players(parsed_data)
 
 func move_character(direction):
 	var data = {
@@ -41,10 +43,7 @@ func set_position(x, y):
 	var data = {
 		"action": "set_position",
 		"player": Global.PLAYER_NAME,
-		"position": {
-			"x": x,
-			"y": y
-		}
+		"position": [x, y]
 	}
 	_client.get_peer(1).put_packet(JSON.print(data).to_utf8())
 
