@@ -1,57 +1,67 @@
-const ACTION_SET_POSITION = 'set_position';
 const ACTION_UPDATE_POSITION = 'update_position';
+const ACTION_JOIN_PLAYER = 'join_player';
 
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 5000 });
 
 
-let positions = {}
+let players = []
+
 wss.on('connection', function connection(ws) {
   var socketAddr = ws._socket.remoteAddress.replace("::ffff:", "");
   console.log('Connection from ' + socketAddr + " - " + new Date());
 
-  ws.on('open', function open() {
-    console.log('connected');
-  });
-
   ws.on('message', function incoming(message) {
     message = message.toString();
-    message_json = JSON.parse(message);
-    console.log('received message: ', message);
+    const message_json = JSON.parse(message);
     const action = message_json['action'];
-    const player = message_json['player'];
+    const player_name = message_json['player_name'];
 
-    if (action == ACTION_SET_POSITION) {
-      positions[player] = {}
-      positions[player]['position'] = [
-        parseInt(message_json['position'][0]),
-        parseInt(message_json['position'][1])
-      ]
+    if (action == ACTION_JOIN_PLAYER) {
+      console.log(`${player_name} join the game`);
+      players.push({
+        name: player_name,
+        position: [255, 256],
+      });
+      // Enviar mensagem para todos, menos a si proprio
+      wss.clients.forEach(function each(client) {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          const data = {action: 'new_player', player_name: player_name}
+          client.send(JSON.stringify(data));
+        }
+      });
     }
 
     if (action == ACTION_UPDATE_POSITION) {
-      let updated_position = positions[player]['position'];
-      if (message_json['direction'] == 'up') {
-        updated_position[1] += 16;
-      } else if (message_json['direction'] == 'down') {
-        updated_position[1] -= 16;
-      } else if (message_json['direction'] == 'left') {
-        updated_position[0] += 16;
-      } else if (message_json['direction'] == 'right') {
-        updated_position[0] -= 16;
+      // Encontra na lista o player que irá se mexer
+      const player_to_update = players.find(function(i){
+        return i.name == player_name
+      });
+      // Altera a posição do player
+      let updated_position = player_to_update.position;
+      switch (message_json['direction']) {
+        case 'up':
+          updated_position[1] -= 16;
+          break;
+        case 'down':
+          updated_position[1] += 16;
+          break;
+        case 'left':
+          updated_position[0] -= 16;
+          break;
+        case 'right':
+          updated_position[0] += 16;
+          break;
       }
-      positions[player]['position'] = updated_position;
+      player_to_update.position = updated_position;
     }
-
-    console.log(positions);
+    // console.log(players);
 
     // Enviar mensagem para todos
     wss.clients.forEach(function each(client) {
-      // if (client !== ws && client.readyState === WebSocket.OPEN) {
-      //   client.send('message');
-      // }
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(positions));
+        const data = {action: 'update_positions', data: players}
+        client.send(JSON.stringify(data));
       }
     });
   });

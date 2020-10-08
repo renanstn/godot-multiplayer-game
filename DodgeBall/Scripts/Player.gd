@@ -4,10 +4,9 @@ extends Area2D
 func _ready():
 	WebSocket.connect("connected", self, "_on_connect")
 	WebSocket.ws_connect()
-	Global.player_instance = self
-	
+
 func _on_connect():
-	WebSocket.set_position(self.global_position.x, self.global_position.y)
+	pass
 
 func _process(delta):
 	if Input.is_action_just_pressed("up"):
